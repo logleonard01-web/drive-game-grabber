@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Retro Soccer 2-Player</title>
+<style>
+  body { margin:0; background:#0a5c0a; overflow:hidden; }
+  canvas { display:block; margin:auto; background:#007f0e; image-rendering:pixelated; }
+  #hud {
+    position:absolute; top:10px; left:0; width:100%; text-align:center;
+    font-family:'Courier New',monospace; font-size:22px; color:#fff;
+  }
+</style>
+</head>
+<body>
+<div id="hud">Red 0 - 0 Blue &nbsp;|&nbsp;Time: 120</div>
+<canvas id="game" width="800" height="450"></canvas>
+
+<script>
+/* ---------- BASIC RETRO SOCCER FRAME ---------- */
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const hud = document.getElementById('hud');
+
+let timer = 120;
+let redScore = 0, blueScore = 0;
+let running = true;
+
+/* PLAYER, BALL, GOALKEEPER OBJECTS */
+const red = {x:150, y:225, c:'red', up:'w', down:'s', left:'a', right:'d'};
+const blue= {x:650, y:225, c:'blue',up:'ArrowUp',down:'ArrowDown',left:'ArrowLeft',right:'ArrowRight'};
+const ball = {x:400, y:225, vx:0, vy:0, r:6};
+const keeperR={x:50, y:225, c:'#ff8888'};
+const keeperB={x:750, y:225, c:'#8888ff'};
+const keys={};
+
+/* KEY HANDLERS */
+document.addEventListener('keydown',e=>keys[e.key]=true);
+document.addEventListener('keyup',e=>keys[e.key]=false);
+document.addEventListener('keydown',e=>{if(e.key==='r')location.reload();});
+
+/* SIMPLE PHYSICS */
+function movePlayer(p){
+  const s=3;
+  if(keys[p.up])p.y-=s;
+  if(keys[p.down])p.y+=s;
+  if(keys[p.left])p.x-=s;
+  if(keys[p.right])p.x+=s;
+  p.x=Math.max(20,Math.min(780,p.x));
+  p.y=Math.max(20,Math.min(430,p.y));
+}
+function updateBall(){
+  ball.x+=ball.vx; ball.y+=ball.vy;
+  ball.vx*=0.98; ball.vy*=0.98;
+  if(ball.y<10||ball.y>440)ball.vy*=-1;
+}
+
+/* COLLISIONS */
+function checkKick(p){
+  let dx=ball.x-p.x, dy=ball.y-p.y;
+  let dist=Math.hypot(dx,dy);
+  if(dist<20){ball.vx=dx*0.25; ball.vy=dy*0.25;}
+}
+
+/* AI GOALKEEPERS */
+function aiKeeper(k, targetX){
+  k.y += Math.sign(ball.y - k.y) * 2;
+  k.y=Math.max(40,Math.min(410,k.y));
+}
+
+/* GOAL DETECTION */
+function checkGoal(){
+  if(ball.x<5 && ball.y>150 && ball.y<300){blueScore++; reset();}
+  if(ball.x>795 && ball.y>150 && ball.y<300){redScore++; reset();}
+}
+
+/* RESET BALL AFTER GOAL */
+function reset(){
+  ball.x=400; ball.y=225; ball.vx=ball.vy=0;
+}
+
+/* GAME LOOP */
+function draw(){
+  ctx.clearRect(0,0,800,450);
+  // field
+  ctx.fillStyle='#0b6d0b'; ctx.fillRect(0,0,800,450);
+  ctx.strokeStyle='#fff'; ctx.strokeRect(5,150,10,150); ctx.strokeRect(785,150,10,150);
+  ctx.beginPath(); ctx.arc(400,225,60,0,Math.PI*2); ctx.stroke();
+  // players and ball
+  [keeperR,keeperB,red,blue].forEach(p=>{ctx.fillStyle=p.c; ctx.fillRect(p.x-8,p.y-8,16,16);});
+  ctx.beginPath(); ctx.fillStyle='white'; ctx.arc(ball.x,ball.y,ball.r,0,Math.PI*2); ctx.fill();
+}
+
+function loop(){
+  if(!running) return;
+  movePlayer(red); movePlayer(blue);
+  aiKeeper(keeperR, 100); aiKeeper(keeperB,700);
+  checkKick(red); checkKick(blue);
+  updateBall(); checkGoal();
+  draw();
+  hud.textContent=`Red ${redScore} - ${blueScore} Blue | Time: ${timer}`;
+  requestAnimationFrame(loop);
+}
+
+/* TIMER */
+setInterval(()=>{
+  if(running){timer--; if(timer<=0){running=false; hud.textContent+='  |  Time Up!';}}
+},1000);
+
+/* START GAME */
+loop();
+
+/* --- AUDIO PLACEHOLDERS ---
+const crowd = new Audio('crowd.mp3'); crowd.loop=true; crowd.play();
+const kickSound = new Audio('kick.wav');
+*/
+</script>
+</body>
+</html>

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Retro Deluxe Shooter 3.1</title>
+<style>
+html,body{
+  margin:0;
+  background:#000;
+  overflow:hidden;
+  color:#fff;
+  font-family:monospace;
+}
+canvas{
+  display:block;
+  margin:auto;
+  background:radial-gradient(circle at center, #111 0%, #000 100%);
+  image-rendering:pixelated;
+  border:2px solid #0ff4;
+  border-radius:10px;
+  box-shadow:0 0 20px #0ff3,0 0 60px #0ff2 inset;
+}
+</style>
+</head>
+<body>
+<canvas id="game" width="800" height="500"></canvas>
+<script>
+const c=document.getElementById("game"),ctx=c.getContext("2d");
+const W=c.width,H=c.height;
+let keys={},bullets=[],powerups=[],particles=[],explosions=[],score=[0,0];
+
+let players=[
+ {x:120,y:H/2,vx:0,vy:0,angle:0,hp:100,color:"#3ef",cd:0},
+ {x:W-120,y:H/2,vx:0,vy:0,angle:Math.PI,hp:100,color:"#f55",cd:0,isAI:true}
+];
+
+addEventListener("keydown",e=>{
+  if(["w","a","s","d"," "].includes(e.key)) keys[e.key]=true;
+});
+addEventListener("keyup",e=>{
+  if(["w","a","s","d"," "].includes(e.key)) keys[e.key]=false;
+});
+
+function rand(a,b){return Math.random()*(b-a)+a}
+function spawnPower(){powerups.push({x:rand(100,W-100),y:rand(60,H-60),type:Math.random()<0.5?"heal":"rapid"})}
+
+function shoot(p,i){
+ if(p.cd>0)return;
+ const spd=8;
+ bullets.push({
+   x:p.x+Math.cos(p.angle)*14,
+   y:p.y+Math.sin(p.angle)*14,
+   vx:Math.cos(p.angle)*spd,
+   vy:Math.sin(p.angle)*spd,
+   owner:i,color:p.color,life:120
+ });
+ particles.push({x:p.x,y:p.y,t:6,c:p.color});
+ p.cd=14;
+}
+
+function updateAI(p,target,i){
+ const dx=target.x-p.x, dy=target.y-p.y;
+ const dist=Math.hypot(dx,dy);
+ const targetAngle=Math.atan2(dy,dx);
+ let diff=(targetAngle-p.angle+Math.PI*3)%(Math.PI*2)-Math.PI;
+ if(diff>0.05)p.angle+=0.05;
+ else if(diff<-0.05)p.angle-=0.05;
+ if(dist>200){p.vx+=Math.cos(p.angle)*0.15;p.vy+=Math.sin(p.angle)*0.15;}
+ else if(dist<120){p.vx-=Math.cos(p.angle)*0.1;p.vy-=Math.sin(p.angle)*0.1;}
+ if(Math.random()<0.03)p.strafeDir=Math.random()<0.5?-1:1;
+ const strafeDir=p.strafeDir||1;
+ p.vx+=Math.cos(p.angle+Math.PI/2)*0.05*strafeDir;
+ p.vy+=Math.sin(p.angle+Math.PI/2)*0.05*strafeDir;
+ for(const b of bullets){if(b.owner!==i && Math.hypot(b.x-p.x,b.y-p.y)<100){p.vx+=Math.cos(p.angle+Math.PI/2)*0.25*(Math.random()<0.5?-1:1);}}
+ if(Math.abs(diff)<0.25 && dist<400)shoot(p,i);
+}
+
+function update(){
+ const p=players[0]; // player 1
+ // Movement controls
+ if(keys["a"])p.angle-=0.08;
+ if(keys["d"])p.angle+=0.08;
+ if(keys["w"]){p.vx+=Math.cos(p.angle)*0.25;p.vy+=Math.sin(p.angle)*0.25;}
+ if(keys["s"]){p.vx*=0.95;p.vy*=0.95;}
+ if(keys[" "])shoot(p,0);
+
+ for(const pl of players){
+   const i=players.indexOf(pl);
+   if(pl.isAI)updateAI(pl,p, i);
+   pl.x+=pl.vx; pl.y+=pl.vy;
+   pl.vx*=0.985; pl.vy*=0.985;
+   if(pl.x<20){pl.x=20;pl.vx*=-0.5;}
+   if(pl.x>W-20){pl.x=W-20;pl.vx*=-0.5;}
+   if(pl.y<20){pl.y=20;pl.vy*=-0.5;}
+   if(pl.y>H-20){pl.y=H-20;pl.vy*=-0.5;}
+   pl.cd=Math.max(0,pl.cd-1);
+ }
+
+ for(const b of bullets){b.x+=b.vx;b.y+=b.vy;b.life--;}
+ bullets=bullets.filter(b=>b.life>0&&b.x>0&&b.x<W&&b.y>0&&b.y<H);
+
+ for(const b of bullets){
+   for(let i=0;i<players.length;i++){
+     const pl=players[i];
+     if(b.owner!==i && Math.hypot(b.x-pl.x,b.y-pl.y)<12){
+       pl.hp-=10; b.life=0;
+       particles.push({x:b.x,y:b.y,t:10,c:b.color});
+       if(pl.hp<=0){explosions.push({x:pl.x,y:pl.y,t:40,c:pl.color});score[b.owner]++;pl.hp=100;pl.x=i?W-120:120;pl.y=H/2;pl.vx=pl.vy=0;}
+     }
+   }
+ }
+
+ for(const pl of players){
+   for(const u of powerups){
+     if(Math.hypot(u.x-pl.x,u.y-pl.y)<18){
+       if(u.type==="heal")pl.hp=Math.min(100,pl.hp+30);
+       if(u.type==="rapid"){pl.rapid=true;setTimeout(()=>pl.rapid=false,4000);}
+       powerups.splice(powerups.indexOf(u),1);
+     }
+   }
+ }
+
+ if(Math.random()<0.003&&powerups.length<3)spawnPower();
+ particles.forEach(pt=>pt.t--);
+ particles=particles.filter(pt=>pt.t>0);
+ explosions.forEach(e=>e.t--);
+ explosions=explosions.filter(e=>e.t>0);
+}
+
+function glow(x,y,r,color,a=1){
+ ctx.beginPath();
+ ctx.globalAlpha=a;
+ const g=ctx.createRadialGradient(x,y,0,x,y,r);
+ g.addColorStop(0,color);
+ g.addColorStop(1,"transparent");
+ ctx.fillStyle=g;
+ ctx.arc(x,y,r,0,Math.PI*2);
+ ctx.fill();
+ ctx.globalAlpha=1;
+}
+
+function drawShip(x,y,angle,color){
+ ctx.save(); ctx.translate(x,y); ctx.rotate(angle);
+ ctx.beginPath();
+ ctx.moveTo(12,0); ctx.lineTo(-10,6); ctx.lineTo(-6,0); ctx.lineTo(-10,-6); ctx.closePath();
+ ctx.fillStyle=color; ctx.shadowColor=color; ctx.shadowBlur=12; ctx.fill(); ctx.shadowBlur=0;
+ ctx.restore();
+}
+
+function drawExplosion(e){
+ for(let i=0;i<10;i++){
+   const a=(Math.PI*2/10)*i+rand(-0.1,0.1);
+   const r=(40-e.t)*0.8;
+   glow(e.x+Math.cos(a)*r,e.y+Math.sin(a)*r,6,e.c,e.t/40);
+ }
+}
+
+function draw(){
+ ctx.fillStyle="rgba(0,0,0,0.3)"; ctx.fillRect(0,0,W,H);
+ ctx.strokeStyle="#0f84"; ctx.lineWidth=2; ctx.strokeRect(20,20,W-40,H-40);
+ for(const b of bullets)glow(b.x,b.y,5,b.color,0.8);
+ for(const u of powerups){const c=u.type==="heal"?"#0f0":"#ff0"; glow(u.x,u.y,10,c,0.7); ctx.fillStyle=c; ctx.fillRect(u.x-4,u.y-4,8,8);}
+ for(const pl of players){drawShip(pl.x,pl.y,pl.angle,pl.color); ctx.fillStyle="#222";ctx.fillRect(pl.x-20,pl.y-20,40,4); ctx.fillStyle=pl.color;ctx.fillRect(pl.x-20,pl.y-20,40*(pl.hp/100),4);}
+ explosions.forEach(drawExplosion);
+ for(const pt of particles)glow(pt.x,pt.y,3,pt.c,pt.t/10);
+ ctx.fillStyle="#fff"; ctx.fillText(`Score ${score[0]} - ${score[1]}`,W/2-35,22);
+}
+
+(function loop(){update();draw();requestAnimationFrame(loop)})();
+</script>
+</body>
+</html>

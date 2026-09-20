@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+body{
+  font-family:Arial,sans-serif;
+  padding:15px;
+  background:white;
+}
+
+input{
+  width:100%;
+  padding:8px;
+  margin-bottom:15px;
+}
+
+.president{
+  padding:8px;
+  border-bottom:1px solid #ddd;
+}
+</style>
+</head>
+
+<body>
+
+<h2>All U.S. Presidents</h2>
+
+<input
+id="search"
+placeholder="Search president..."
+onkeyup="filterPresidents()"
+>
+
+<div id="list"></div>
+
+<script>
+
+let presidents = [
+
+"George Washington",
+"John Adams",
+"Thomas Jefferson",
+"James Madison",
+"James Monroe",
+"John Quincy Adams",
+"Andrew Jackson",
+"Martin Van Buren",
+"William Henry Harrison",
+"John Tyler",
+"James K. Polk",
+"Zachary Taylor",
+"Millard Fillmore",
+"Franklin Pierce",
+"James Buchanan",
+"Abraham Lincoln",
+"Andrew Johnson",
+"Ulysses S. Grant",
+"Rutherford B. Hayes",
+"James A. Garfield",
+"Chester A. Arthur",
+"Grover Cleveland",
+"Benjamin Harrison",
+"Grover Cleveland (2nd Term)",
+"William McKinley",
+"Theodore Roosevelt",
+"William Howard Taft",
+"Woodrow Wilson",
+"Warren G. Harding",
+"Calvin Coolidge",
+"Herbert Hoover",
+"Franklin D. Roosevelt",
+"Harry S. Truman",
+"Dwight D. Eisenhower",
+"John F. Kennedy",
+"Lyndon B. Johnson",
+"Richard Nixon",
+"Gerald Ford",
+"Jimmy Carter",
+"Ronald Reagan",
+"George H. W. Bush",
+"Bill Clinton",
+"George W. Bush",
+"Barack Obama",
+"Donald Trump",
+"Joe Biden"
+
+];
+
+function renderList(){
+
+let output = "";
+
+for(let i=0;i<presidents.length;i++){
+
+output +=
+'<div class="president">'
++ (i+1)
++ ". "
++ presidents[i]
++ '</div>';
+
+}
+
+document.getElementById("list").innerHTML =
+output;
+
+}
+
+function filterPresidents(){
+
+let q =
+document.getElementById("search")
+.value
+.toLowerCase();
+
+let output = "";
+
+for(let i=0;i<presidents.length;i++){
+
+if(
+presidents[i]
+.toLowerCase()
+.includes(q)
+){
+
+output +=
+'<div class="president">'
++ (i+1)
++ ". "
++ presidents[i]
++ '</div>';
+
+}
+
+}
+
+document.getElementById("list").innerHTML =
+output;
+
+}
+
+renderList();
+
+</script>
+
+</body>
+</html>
